@@ -142,8 +142,6 @@ pipeline {
             
             echo "🔧 Preparing Kaniko configuration..."
             mkdir -p /tmp/kaniko-${BUILD_NUMBER}/.docker
-            
-            # Copy the authenticated Docker config
             cp ~/.docker/config.json /tmp/kaniko-${BUILD_NUMBER}/.docker/config.json
             
             echo "🐳 Building and pushing Docker image with Kaniko..."
@@ -179,7 +177,6 @@ pipeline {
             echo "🔒 Running Trivy security scan on Docker image..."
             mkdir -p trivy-reports
             
-            # Scan the image and generate JSON report
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v $(pwd)/trivy-reports:/reports \
@@ -188,7 +185,6 @@ pipeline {
               --output /reports/trivy-image-report-${BUILD_NUMBER}.json \
               ${DOCKER_IMAGE}:${BUILD_NUMBER}
             
-            echo "📊 Generating HTML report..."
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v $(pwd)/trivy-reports:/reports \
@@ -199,7 +195,6 @@ pipeline {
               ${DOCKER_IMAGE}:${BUILD_NUMBER}
             
             echo "✅ Trivy image scan completed!"
-            echo "📄 Reports saved in trivy-reports/"
           '''
         }
       }
@@ -226,14 +221,36 @@ pipeline {
       }
     }
 
-  }
+  } // end of stages
 
   post {
     success {
       echo '✅ Pipeline completed successfully'
+      // Webhook notification to n8n on success
+      sh """
+        curl -X POST http://174.129.167.238:5678/webhook/jenkins-notify \
+        -H "Content-Type: application/json" \
+        -d '{
+          "status": "SUCCESS",
+          "job": "${JOB_NAME}",
+          "build": "${BUILD_NUMBER}",
+          "url": "${BUILD_URL}"
+        }'
+      """
     }
     failure {
       echo '❌ Pipeline failed'
+      // Webhook notification to n8n on failure
+      sh """
+        curl -X POST http://174.129.167.238:5678/webhook/jenkins-notify \
+        -H "Content-Type: application/json" \
+        -d '{
+          "status": "FAILED",
+          "job": "${JOB_NAME}",
+          "build": "${BUILD_NUMBER}",
+          "url": "${BUILD_URL}"
+        }'
+      """
     }
   }
 }

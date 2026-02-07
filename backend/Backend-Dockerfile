@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+# Set environment variables for performance and logging
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+# Create non-root user
+RUN useradd -m -u 1000 django
+WORKDIR /app
+# Install dependencies in a single layer to reduce image size
+COPY requirements.txt .
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       gcc \
+       libpq-dev \
+       build-essential \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apt-get purge -y --auto-remove gcc libpq-dev build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+# Copy application code
+COPY --chown=django:django . .
+# Switch to non-root user
+USER django
+# Expose port
+EXPOSE 8000
+# Run with Gunicorn
+CMD ["gunicorn", "gig_router.wsgi:application", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "4", \
+     "--timeout", "120", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]
