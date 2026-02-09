@@ -35,25 +35,25 @@ pipeline {
       }
     }
 
-    // stage('Test & Coverage') {
-    //   steps {
-    //     dir("${FRONTEND_DIR}") {
-    //       catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-    //         sh 'npm test -- --coverage --watchAll=false'
-    //       }
-    //     }
-    //   }
-    //   post {
-    //     always {
-    //       archiveArtifacts artifacts: "${FRONTEND_DIR}/coverage/**", fingerprint: true
-    //       publishHTML(target: [
-    //         reportDir: "${FRONTEND_DIR}/coverage",
-    //         reportFiles: 'index.html',
-    //         reportName: 'Coverage Report'
-    //       ])
-    //     }
-    //   }
-    // }
+    stage('Test & Coverage') {
+      steps {
+        dir("${FRONTEND_DIR}") {
+          catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+            sh 'npm test -- --coverage --watchAll=false'
+          }
+        }
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: "${FRONTEND_DIR}/coverage/**", fingerprint: true
+          publishHTML(target: [
+            reportDir: "${FRONTEND_DIR}/coverage",
+            reportFiles: 'index.html',
+            reportName: 'Coverage Report'
+          ])
+        }
+      }
+    }
 
     stage('SonarQube Analysis') {
       steps {
