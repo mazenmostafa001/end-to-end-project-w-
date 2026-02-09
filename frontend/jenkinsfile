@@ -234,6 +234,8 @@ pipeline {
           "status": "SUCCESS",
           "job": "${JOB_NAME}",
           "build": "${BUILD_NUMBER}",
+          "image": "${DOCKER_IMAGE}",
+          "tag": "${BUILD_NUMBER}",
           "url": "${BUILD_URL}"
         }'
       """
@@ -248,6 +250,8 @@ pipeline {
           "status": "FAILED",
           "job": "${JOB_NAME}",
           "build": "${BUILD_NUMBER}",
+          "image": "${DOCKER_IMAGE}",
+          "tag": "${BUILD_NUMBER}",
           "url": "${BUILD_URL}"
         }'
       """
