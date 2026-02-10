@@ -3,7 +3,6 @@ pipeline {
 
   tools {
     nodejs 'NodeJS-18'
-    
   }
 
   environment {
@@ -36,39 +35,20 @@ pipeline {
       }
     }
 
-    // stage('Test & Coverage') {
-    //   steps {
-    //     dir("${FRONTEND_DIR}") {
-    //       catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-    //         sh 'npm test -- --coverage --watchAll=false'
-    //       }
-    //     }
-    //   }
-    //   post {
-    //     always {
-    //       archiveArtifacts artifacts: "${FRONTEND_DIR}/coverage/**", fingerprint: true
-    //       publishHTML(target: [
-    //         reportDir: "${FRONTEND_DIR}/coverage",
-    //         reportFiles: 'index.html',
-    //         reportName: 'Coverage Report'
-    //       ])
-    //     }
-    //   }
-    // }
-
     stage('SonarQube Analysis') {
       steps {
         dir("${FRONTEND_DIR}") {
           withSonarQubeEnv('sonarqube') {
-            sh '''
-              sonar-scanner \
+            def scannerHome = tool 'sonar-scanner'
+            sh """
+              ${scannerHome}/bin/sonar-scanner \
                 -Dsonar.projectKey=frontend-react \
                 -Dsonar.sources=src \
                 -Dsonar.tests=src \
                 -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js \
                 -Dsonar.exclusions=**/node_modules/**,**/build/** \
                 -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            '''
+            """
           }
         }
       }
@@ -109,7 +89,7 @@ pipeline {
       }
     }
 
-    stage('Upload Artifact to Nexus (Raw)') {
+    stage('Upload Artifact to Nexus') {
       environment {
         NEXUS_CREDS = credentials('nexus-cred')
       }
@@ -138,14 +118,11 @@ pipeline {
       steps {
         dir("${FRONTEND_DIR}") {
           sh '''
-            echo "🔧 Logging in to Docker Hub..."
             echo "${DOCKER_CREDS_PSW}" | docker login -u "${DOCKER_CREDS_USR}" --password-stdin
-            
-            echo "🔧 Preparing Kaniko configuration..."
+
             mkdir -p /tmp/kaniko-${BUILD_NUMBER}/.docker
             cp ~/.docker/config.json /tmp/kaniko-${BUILD_NUMBER}/.docker/config.json
-            
-            echo "🐳 Building and pushing Docker image with Kaniko..."
+
             docker run --rm \
               -v $(pwd):/workspace \
               -v /tmp/kaniko-${BUILD_NUMBER}/.docker:/kaniko/.docker \
@@ -157,13 +134,6 @@ pipeline {
               --cache=true \
               --verbosity=info
 
-            echo "✅ Image pushed successfully to Docker Hub!"
-          '''
-        }
-      }
-      post {
-        always {
-          sh '''
             rm -rf /tmp/kaniko-${BUILD_NUMBER} || true
             docker logout || true
           '''
@@ -175,9 +145,8 @@ pipeline {
       steps {
         dir("${FRONTEND_DIR}") {
           sh '''
-            echo "🔒 Running Trivy security scan on Docker image..."
             mkdir -p trivy-reports
-            
+
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v $(pwd)/trivy-reports:/reports \
@@ -185,7 +154,7 @@ pipeline {
               --format json \
               --output /reports/trivy-image-report-${BUILD_NUMBER}.json \
               ${DOCKER_IMAGE}:${BUILD_NUMBER}
-            
+
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v $(pwd)/trivy-reports:/reports \
@@ -194,8 +163,6 @@ pipeline {
               --template "@contrib/html.tpl" \
               --output /reports/trivy-image-report-${BUILD_NUMBER}.html \
               ${DOCKER_IMAGE}:${BUILD_NUMBER}
-            
-            echo "✅ Trivy image scan completed!"
           '''
         }
       }
@@ -215,19 +182,17 @@ pipeline {
       steps {
         dir("${FRONTEND_DIR}") {
           sh '''
-            echo "🔍 Running Trivy filesystem scan..."
             docker run --rm -v $(pwd):/project aquasec/trivy fs /project || true
           '''
         }
       }
     }
 
-  } // end of stages
+  }
 
   post {
     success {
       echo '✅ Pipeline completed successfully'
-      // Webhook notification to n8n on success
       sh """
         curl -X POST http://174.129.167.238:5678/webhook/jenkins-notify \
         -H "Content-Type: application/json" \
@@ -243,7 +208,6 @@ pipeline {
     }
     failure {
       echo '❌ Pipeline failed'
-      // Webhook notification to n8n on failure
       sh """
         curl -X POST http://174.129.167.238:5678/webhook/jenkins-notify \
         -H "Content-Type: application/json" \
