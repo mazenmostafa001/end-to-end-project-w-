@@ -3,7 +3,6 @@ pipeline {
 
   tools {
     nodejs 'NodeJS-18'
-    sonarScanner 'sonar-scanner'
     
   }
 
@@ -62,7 +61,7 @@ pipeline {
         dir("${FRONTEND_DIR}") {
           withSonarQubeEnv('sonarqube') {
             sh '''
-              sonar-scanner \
+              Sonar-scanner \
                 -Dsonar.projectKey=frontend-react \
                 -Dsonar.sources=src \
                 -Dsonar.tests=src \
