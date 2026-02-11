@@ -7,7 +7,7 @@ pipeline {
   }
 
   environment {
-    RAW_NEXUS_REPO = 'http://174.129.167.238:8081/repository/frontend-artifacts/'
+    RAW_NEXUS_REPO = 'http://51.20.143.84:8081/repository/frontend-artifacts/'
     DOCKER_IMAGE  = 'mazenmostafa429/frontend'
     FRONTEND_DIR  = 'frontend'
   }
